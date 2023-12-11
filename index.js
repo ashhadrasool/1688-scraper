@@ -1,5 +1,4 @@
 const puppeteer = require('puppeteer');
-// const translate = require('google-translate-api');
 const { translate } = require('free-translate');
 
 async function launchAndSetCookies() {
@@ -103,17 +102,18 @@ async function launchAndSetCookies() {
         waitUntil: 'domcontentloaded'
     });
 
-    await page.waitForSelector('span[class="od-pc-offer-tab-item-text"]');
 
-    await page.evaluate( () => {
-        elements = document.querySelectorAll('span[class="od-pc-offer-tab-item-text"]');
-        for (const element of elements){
-            if(element.textContent === '代发'){
-                element.click();
-                break;
-            }
-        }
-    });
+    await page.waitForSelector('span[class="od-pc-offer-tab-item-text"]', {timeout: 50000});
+
+    // await page.evaluate( () => {
+    //     elements = document.querySelectorAll('span[class="od-pc-offer-tab-item-text"]');
+    //     for (const element of elements){
+    //         if(element.textContent === '代发'){
+    //             element.click();
+    //             break;
+    //         }
+    //     }
+    // });
 
     await page.evaluate( () => {
         elements = document.querySelectorAll('span[class="od-pc-offer-tab-item-text"]');
@@ -144,17 +144,64 @@ async function launchAndSetCookies() {
 
         const unitText = priceContent.querySelector('.unit-text').textContent;
 
+        const propItems = Array.from(document.querySelectorAll('.prop-item'));
+
+        const items = propItems.map(propItem => {
+            const itemName = propItem.querySelector('.prop-name').textContent.trim();
+            const itemImgUrl = propItem.querySelector('.prop-img').style.backgroundImage
+                .replace(/^url\(["']?/, '')
+                .replace(/["']?\)$/, '');
+
+            return {
+                itemName,
+                itemImgUrl,
+            };
+        });
+
+        const skuItems = Array.from(document.querySelectorAll('.sku-item-wrapper'));
+
+        const skuData = skuItems.map(skuItem => {
+            const skuItemName = skuItem.querySelector('.sku-item-name').textContent.trim();
+            const discountPrice = skuItem.querySelector('.discountPrice-price').textContent.trim();
+            const skuItemSaleNum = skuItem.querySelector('.sku-item-sale-num').textContent.trim();
+
+            // Extract additional data if needed
+
+            return {
+                skuItemName,
+                discountPrice,
+                skuItemSaleNum,
+            };
+        });
+
         return {
             priceName,
             originalPriceName,
             prices,
             originPrices,
-            unitText
+            unitText,
+            items,
+            skuData
         };
     });
 
-    data["priceName"] = await translateText(data["priceName"]);
-    data["originalPriceName"] = await translateText(data["originalPriceName"]);
+    let str = '';
+
+    str = data.skuData[0].skuItemName;
+    for(let i=1; i<data.skuData.length; i++){
+        str = str + '\n' +data.skuData[i].skuItemName ;
+    }
+
+    let res = await translateText(str);
+
+    const splitedArray = res.split('\n');
+
+    for(let i=0; i<data.skuData.length; i++){
+        data.skuData[i].skuItemName = splitedArray[i];
+    }
+
+    // data["priceName"] = await translateText(data["priceName"]);
+    // data["originalPriceName"] = await translateText(data["originalPriceName"]);
 
 
     while(true){
@@ -165,13 +212,10 @@ async function launchAndSetCookies() {
 
 async function translateText(textToTranslate) {
     try {
-        const { text, from, to } = await translate(textToTranslate, {
+        return await translate(textToTranslate, {
             // from: 'zh-cn',
             to: 'en'
         });
-        return text;
-        // console.log(`Original Text (${from}): ${textToTranslate}`);
-        // console.log(`Translated Text (${to}): ${text}`);
     } catch (error) {
         console.error('Translation error:', error);
     }
