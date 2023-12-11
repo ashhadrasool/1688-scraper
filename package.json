@@ -1,0 +1,17 @@
+{
+  "name": "1688-scraper",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Ashhad Rasool",
+  "license": "ISC",
+  "dependencies": {
+    "free-translate": "^0.6.1",
+    "google-translate-api": "^2.3.0",
+    "puppeteer": "^21.6.0"
+  }
+}
