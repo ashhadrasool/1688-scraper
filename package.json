@@ -11,6 +11,7 @@
   "license": "ISC",
   "dependencies": {
     "free-translate": "^0.6.1",
+    "piscina": "^4.2.1",
     "puppeteer": "^21.6.0"
   }
 }

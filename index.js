@@ -1,15 +1,22 @@
 const puppeteer = require('puppeteer');
-const { translate } = require('free-translate');
+const { Piscina } = require('piscina');
+const path = require('path');
 
 async function launchAndSetCookies() {
+    let data;
     try {
 
         const browser = await puppeteer.launch(
             {
                 headless: false,
-                defaultViewport: null
+                defaultViewport: null,
+                args: ['--start-maximized'],
+
             }
         );
+
+        let exhangeRate = await fetchExchangeRate(browser, 1);
+        console.log("exhangeRate", exhangeRate);
 
         let page = await browser.newPage();
         const url = 'https://1688.com';
@@ -95,131 +102,47 @@ async function launchAndSetCookies() {
         // page = await browser.newPage();
         // await page.setDefaultNavigationTimeout(120000);
 
-        let userInputUrl = 'https://detail.1688.com/offer/738746323565.html?spm=a2615.2177701.autotrace-_t_16351492839694_1_0_0_1635150867529.49.d094303erUq9ul';
-        userInputUrl = userInputUrl.split('?')[0] + '?sk=consign';
+        // let userInputUrl = 'https://detail.1688.com/offer/738746323565.html?spm=a2615.2177701.autotrace-_t_16351492839694_1_0_0_1635150867529.49.d094303erUq9ul';
+        // let userInputUrl = 'https://detail.1688.com/offer/692384204490.html?spm=a261y.7663282.10811813088311.2.2c492e51HBl3Mc&sk=consign';
+        // await scrapeProductPage(userInputUrl);
+
+        let userInputUrl = 'https://pintimewatchs.1688.com/page/offerlist.htm?spm=0.0.wp_pc_common_topnav_38229151.0';
 
         await page.goto(userInputUrl, {
             // waitUntil: 'load'
-            waitUntil: 'domcontentloaded'
         });
 
+        //while (true)
+        {
+            // const images = await page.$$('[class="main-picture"]');
+            const urls = await page.$$eval('img[class="main-picture"]', (elements) => {
+                return elements.map(element => {
+                    srcVal = element.getAttribute("src");
+                    return srcVal;
+                    // if(!srcVal.includes('data:image/')){
+                    //     return 'https:'+srcVal;
+                    // }
+                })
+            });
 
-        await page.waitForSelector('span[class="od-pc-offer-tab-item-text"]', {timeout: 50000});
+            const piscina = new Piscina({
+                filename: path.resolve(__dirname, 'detail-page-scrapper.js'),
+                minThreads: 1,
+                maxThreads: 1,
+            });
 
-        // await page.evaluate( () => {
-        //     elements = document.querySelectorAll('span[class="od-pc-offer-tab-item-text"]');
-        //     for (const element of elements){
-        //         if(element.textContent === '代发'){
-        //             element.click();
-        //             break;
-        //         }
-        //     }
-        // });
-
-        await page.evaluate( () => {
-            elements = document.querySelectorAll('span[class="od-pc-offer-tab-item-text"]');
-            for (const element of elements){
-                if(element.textContent === '代发'){
-                    element.click();
-                    break;
+            let promises = []
+            for(let i=0; i<urls.length; i++){
+                if(!url[i]){
+                    continue;
                 }
+                promises.push(piscina.runTask(url));
             }
-        });
-        await page.waitForSelector('div[role="alertdialog"]', {timeout: 60000});
-        await page.$eval('div[role="alertdialog"]', el => el.remove());
-        await page.$eval('div[class="next-overlay-wrapper opened"]', el => el.remove());
-        await page.evaluate(() => {
-            document.body.style.overflow = 'visible';
-        });
+            const results = await Promise.all(promises);
 
-        const data = await page.evaluate(() => {
-            const title = document.querySelector('div[class="title-text"]');
+            let amazon_pr;
 
-            const priceContent = document.querySelector('.price-content');
-            const priceName = priceContent.querySelector('.price-name').textContent;
-            const originalPriceName = priceContent.querySelector('.original-price-name').textContent;
-
-            const priceTextElements = priceContent.querySelectorAll('.price-text');
-            const prices = Array.from(priceTextElements).map(element => element.textContent);
-
-            const originPriceNums = priceContent.querySelectorAll('.origin-price-wrapper .price-num');
-            const originPrices = Array.from(originPriceNums).map(element => element.textContent.trim());
-
-            const unitText = priceContent.querySelector('.unit-text').textContent;
-
-            const propItems = Array.from(document.querySelectorAll('.prop-item'));
-
-            const items = propItems.map(propItem => {
-                const itemName = propItem.querySelector('.prop-name').textContent.trim();
-                const itemImgUrl = propItem.querySelector('.prop-img').style.backgroundImage
-                    .replace(/^url\(["']?/, '')
-                    .replace(/["']?\)$/, '');
-
-                return {
-                    itemName,
-                    itemImgUrl,
-                };
-            });
-
-            const skuItems = Array.from(document.querySelectorAll('.sku-item-wrapper'));
-
-            const skuData = skuItems.map(skuItem => {
-                const skuItemName = skuItem.querySelector('.sku-item-name').textContent.trim();
-                const discountPrice = skuItem.querySelector('.discountPrice-price').textContent.trim();
-                const skuItemSaleNum = skuItem.querySelector('.sku-item-sale-num').textContent.trim();
-
-                // Extract additional data if needed
-
-                return {
-                    skuItemName,
-                    discountPrice,
-                    skuItemSaleNum,
-                };
-            });
-
-            return {
-                title,
-                priceName,
-                originalPriceName,
-                prices,
-                originPrices,
-                unitText,
-                items,
-                skuData
-            };
-        });
-
-        let str = '';
-
-        str = data.skuData[0].skuItemName;
-        for(let i=1; i<data.skuData.length; i++){
-            str = str + '\n' +data.skuData[i].skuItemName ;
         }
-
-        str = str + '\n' +data.title;
-        str = str + '\n' +data.priceName;
-        str = str + '\n' +data.originalPriceName;
-        str = str + '\n' +data.unitText;
-
-        let res = await translateText(str);
-
-        const splitedArray = res.split('\n');
-
-        for(let i=0; i<data.skuData.length; i++){
-            data.skuData[i].skuItemName = splitedArray[i];
-        }
-
-        data.title = splitedArray[data.skuData.length];
-        data.priceName = splitedArray[data.skuData.length + 1];
-        data.originalPriceName = splitedArray[data.skuData.length + 2];
-        data.unitText = splitedArray[data.skuData.length + 3];
-
-
-
-
-        // data["priceName"] = await translateText(data["priceName"]);
-        // data["originalPriceName"] = await translateText(data["originalPriceName"]);
-
 
         while(true){
             await new Promise((resolve)=> setTimeout(resolve, 2000));
@@ -231,16 +154,12 @@ async function launchAndSetCookies() {
     }
 }
 
-async function translateText(textToTranslate) {
-    try {
-        return await translate(textToTranslate, {
-            // from: 'zh-cn',
-            to: 'en'
-        });
-    } catch (error) {
-        console.error('Translation error:', error);
-    }
-    return '';
+async function fetchExchangeRate(browser, amount){
+    page = await browser.newPage();
+    await page.goto(`https://www.google.com/search?q=${amount}+pounds+to+eur`);
+    const exhangeRate = await page.$eval('div[data-exchange-rate]', element => element.getAttribute('data-exchange-rate'));
+    await page.close();
+    return exhangeRate;
 }
 
 launchAndSetCookies();
