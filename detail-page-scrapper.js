@@ -1,6 +1,5 @@
 const {translate} = require("free-translate");
-const { translate } = require('free-translate');
-const {Page} = require("puppeteer");
+
 const puppeteer = require("puppeteer");
 
 async function performScraping(url){
@@ -38,8 +37,11 @@ async function performScraping(url){
         //     continue
         // }
     }catch (e) {
-        return {};
     }
+    finally {
+        await browser.close();
+    }
+    return {};
 }
 
 async function amazonPrice(browser, imageUrl) //to get product price from amazon using googlelens
@@ -108,22 +110,40 @@ async function amazonPrice(browser, imageUrl) //to get product price from amazon
                 continue;
             }
         }
-        // if(!amazonPage){
-        //
-        // }
+        if(!amazonPage){
+            throw new Error('Amazon product not found');
+        }
+        const isAvailable = await amazonPage.$eval(
+            '[data-action="show-all-offers-display"]',
+            node => node.textContent.trim() == 'Currently unavailable'
+        );
+
+        if(!isAvailable){
+            throw new Error('Amazon product not available');
+        }
         const priceText = await amazonPage.$eval(
             'span[class="a-price-whole"]',
             // 'span.a-price.a-text-price.a-size-medium span.a-offscreen',
             node => node.innerText
         );
-
         const price = parseFloat(priceText); // Assuming get_price is a separate function
-        // if (price < productPrice || productPrice === 0.0) {
-        //     productPrice = price;
-        // }
+
+
+        // await page.reload();
+        //
+        // await page.close();
+        //
+        // page = await browser.newPage();
+        // await page.setDefaultNavigationTimeout(120000);
+
+        // let userInputUrl = 'https://detail.1688.com/offer/738746323565.html?spm=a2615.2177701.autotrace-_t_16351492839694_1_0_0_1635150867529.49.d094303erUq9ul';
+        // let userInputUrl = 'https://detail.1688.com/offer/692384204490.html?spm=a261y.7663282.10811813088311.2.2c492e51HBl3Mc&sk=consign';
+        // await scrapeProductPage(userInputUrl);
+
+
         await amazonPage.close();
 
-        return price;
+        return {price};
     } catch (e) {
         console.error(e);
         await page.close();
@@ -134,6 +154,67 @@ async function amazonPrice(browser, imageUrl) //to get product price from amazon
 
 async function scrapeProductPage(userInputUrl){
     userInputUrl = userInputUrl.split('?')[0] + '?sk=consign';
+
+    const cookies = {
+        'cookie2': '104a0dc27df1d92c19f5f1997594ee15',
+        't': 'f78b2e125ed08fbdb38d66b550d1bc47',
+        '_tb_token_': '711bfee883513',
+        'cna': 'c6PMHaiUBwkCAW3GB0Vhn5tU',
+        'XSRF-TOKEN': '17129d05-0271-461b-a7f6-21eb773956ea',
+        'xlly_s': '1',
+        'cookie1': 'WqUNDVgfUjZEgjdAeHflnzulN5ssmCW9uDaXdmSeE3g%3D',
+        'cookie17': 'UUphzOvA3RGzsVEBbw%3D%3D',
+        'sgcookie': 'E100dhj76fufqF2ZlIc2UwEuJvVOpSVkJQJhhXVixuCgiNYeX1mSgi1wT%2Bvdy0GhDxf7OQkwKMbDtxhLeWaJXhJ%2F0giYZF1S0PBsKDx8IZceKKw%3D',
+        'sg': '106',
+        'csg': '04f86cef',
+        'lid': 'posh111',
+        'unb': '2206955801560',
+        'uc4': 'nk4=0%40EbL%2BqZphOMFCnqD2ZPvDBUN%2F&id4=0%40U2grF8CMYg6Hz3zPRpoXawSI8kphaiQZ',
+        '__cn_logon__': 'true',
+        '__cn_logon_id__': 'posh111',
+        'ali_apache_track': 'c_mid=b2b-22069558015606e1d8|c_lid=posh111|c_ms=1',
+        'ali_apache_tracktmp': 'c_w_signed=Y',
+        '_nk_': 'posh111',
+        'last_mid': 'b2b-22069558015606e1d8',
+        '_csrf_token': '1699628717658',
+        '__mwb_logon_id__': 'posh111',
+        '_m_h5_tk': '22f2ae0923f372ac9d0d6cb7ab435dab_1699655440808',
+        '_m_h5_tk_enc': '5f1c05292443e839dc9ca511eb8f2add',
+        'mwb': 'ng',
+        'aliwwLastRefresh': '1699073813666',
+        'is_identity': 'buyer',
+        '_is_show_loginId_change_block_': 'b2b-22069558015606e1d8_false',
+        '_show_force_unbind_div_': 'b2b-22069558015606e1d8_false',
+        '_show_sys_unbind_div_': 'b2b-22069558015606e1d8_false',
+        '_show_user_unbind_div_': 'b2b-22069558015606e1d8_false',
+        'tfstk': 'dpik21jGK4z7VSNo5QEW4Ld6FG8An_ZQGXIL9kFeuSPjv4FpPHv3iJbFTMkUtXcYG73pdLaEiR2LUJSUaSW4QRWzLvoLLDcb4yg897F3xvGMHCK9XYM7AlR96hISKYZQboHFyhHSFk6lTd32XM0X0YBy8hXjEioCGyNGdFNExOjQH5kzgXhK08fT_YPcYMP4EOlOuN5KsMw2pm7CRzybn5EFzM-h.',
+        'l': 'fBruao9nPYRt2PHkBOfaFurza77OSIRYSuPzaNbMi9fP9wsW5zw1W1FeGUvXC3MNFsMkR3RxBjFXBeYBqBAnnxv9SYRKwbHmnmOk-Wf..',
+        'isg': 'BFRUK_BwzUnlu1kOK6MQ-ub8JZLGrXiXBwnj9e414F9j2fQjFr1IJwpT2cnBJLDv',
+        '__rn_alert__': 'false',
+        'taklid': '54741a6156c34b2b994ef0d87f3b0427'
+    };
+
+    const newArray = [];
+
+    for (const [key, value] of Object.entries(cookies)) {
+        // Create a new object for each key-value pair
+        const newObject = {
+            name: key,
+            value: value,
+            domain: '.1688.com',
+            path: '/'
+        };
+
+        // Add the new object to the array
+        newArray.push(newObject);
+    }
+
+    // await page.goto(url, {
+    //     // waitUntil: 'load'
+    //     waitUntil: 'domcontentloaded'
+    // });
+
+    await page.setCookie(...newArray);
 
     await page.goto(userInputUrl, {
         // waitUntil: 'load'

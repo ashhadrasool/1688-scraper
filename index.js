@@ -34,7 +34,7 @@ async function launchAndSetCookies() {
 
         await page.setDefaultNavigationTimeout(120000);
 
-        const cookies = {
+        const cookies= {
             'cookie2': '104a0dc27df1d92c19f5f1997594ee15',
             't': 'f78b2e125ed08fbdb38d66b550d1bc47',
             '_tb_token_': '711bfee883513',
@@ -76,35 +76,15 @@ async function launchAndSetCookies() {
         const newArray = [];
 
         for (const [key, value] of Object.entries(cookies)) {
-            // Create a new object for each key-value pair
             const newObject = {
                 name: key,
                 value: value,
                 domain: '.1688.com',
                 path: '/'
             };
-
-            // Add the new object to the array
             newArray.push(newObject);
         }
-
-        // await page.goto(url, {
-        //     // waitUntil: 'load'
-        //     waitUntil: 'domcontentloaded'
-        // });
-
         await page.setCookie(...newArray);
-
-        // await page.reload();
-        //
-        // await page.close();
-        //
-        // page = await browser.newPage();
-        // await page.setDefaultNavigationTimeout(120000);
-
-        // let userInputUrl = 'https://detail.1688.com/offer/738746323565.html?spm=a2615.2177701.autotrace-_t_16351492839694_1_0_0_1635150867529.49.d094303erUq9ul';
-        // let userInputUrl = 'https://detail.1688.com/offer/692384204490.html?spm=a261y.7663282.10811813088311.2.2c492e51HBl3Mc&sk=consign';
-        // await scrapeProductPage(userInputUrl);
 
         let userInputUrl = 'https://pintimewatchs.1688.com/page/offerlist.htm?spm=0.0.wp_pc_common_topnav_38229151.0';
 
@@ -112,37 +92,32 @@ async function launchAndSetCookies() {
             // waitUntil: 'load'
         });
 
-        //while (true)
-        {
-            // const images = await page.$$('[class="main-picture"]');
-            const urls = await page.$$eval('img[class="main-picture"]', (elements) => {
-                return elements.map(element => {
-                    srcVal = element.getAttribute("src");
-                    return srcVal;
-                    // if(!srcVal.includes('data:image/')){
-                    //     return 'https:'+srcVal;
-                    // }
-                })
-            });
+        // const images = await page.$$('[class="main-picture"]');
+        const urls = await page.evaluate(() => {
+            elements = Array.from(document.querySelectorAll('img[class="main-picture"]'))
+                .map(e=> 'https:'+e.getAttribute('src'))
+                .filter(e=>e.includes('//cb'));
+            return elements;
+        });
 
-            const piscina = new Piscina({
-                filename: path.resolve(__dirname, 'detail-page-scrapper.js'),
-                minThreads: 1,
-                maxThreads: 1,
-            });
+        const piscina = new Piscina({
+            filename: path.resolve(__dirname, 'detail-page-scrapper.js'),
+            minThreads: 1,
+            maxThreads: 1,
+        });
 
-            let promises = []
-            for(let i=0; i<urls.length; i++){
-                if(!url[i]){
-                    continue;
-                }
-                promises.push(piscina.runTask(url));
+        let promises = []
+        for(let i=0; i<urls.length; i++){
+            if(!urls[i]){
+                continue;
             }
-            const results = await Promise.all(promises);
-
-            let amazon_pr;
-
+            promises.push(
+                piscina.runTask(urls[i]).then( r=> {
+                    console.log(r);
+                })
+            );
         }
+        const results = await Promise.all(promises);
 
         while(true){
             await new Promise((resolve)=> setTimeout(resolve, 2000));
