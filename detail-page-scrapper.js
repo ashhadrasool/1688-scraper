@@ -1,8 +1,9 @@
 const {translate} = require("free-translate");
+const cookies1668 = require('./1668-cookies.json');
 
 const puppeteer = require("puppeteer");
 
-async function performScraping(url){
+async function performScraping({url, imageUrl, exchangeRate}){
     const browser = await puppeteer.launch(
         {
             headless: false,
@@ -14,29 +15,12 @@ async function performScraping(url){
 
     let amazonPr;
     try {
-        amazonPr = await amazonPrice(browser, url);
-        amazonPr = (amazonPr * exhangeRate).toFixed(2);
-        return {price: amazonPr}
-
-        // images[i].click();  //: click image to move to detail page
-        // await new Promise((resolve)=> setTimeout(resolve, 20000));
-        //
-        // const pages = await browser.pages();
-        // const lastPage = pages[pages.length - 1];
-        // await lastPage.bringToFront();
-        //
-        // const active_tab_text = await page.evaluate(() => document.querySelector('[class="od-pc-offer-tab-item-active"]')?.textContent);
-        // const drop_shipping = await page.evaluate(() => document.querySelectorAll('[class="od-pc-offer-tab-item"]')[1]?.textContent);
-        //
-        // cur_url = await page.url();
-        //
-        // delivery_time = get_delivery_time(driver.find_elements(By.CLASS_NAME, 'logistics-text'))
-        // if(delivery_time != "48"){
-        //     driver.close();
-        //     driver.switch_to.window(driver.window_handles[-1]);
-        //     continue
-        // }
+        amazonPr = await amazonPrice(browser, imageUrl);
+        amazonPr = (amazonPr * exchangeRate).toFixed(2);
+        const productDetails = await scrapeProductPage(browser, url);
+        return {productDetails};
     }catch (e) {
+        console.log(e);
     }
     finally {
         await browser.close();
@@ -113,21 +97,25 @@ async function amazonPrice(browser, imageUrl) //to get product price from amazon
         if(!amazonPage){
             throw new Error('Amazon product not found');
         }
-        const isAvailable = await amazonPage.$eval(
-            '[data-action="show-all-offers-display"]',
-            node => node.textContent.trim() == 'Currently unavailable'
-        );
+        const isAvailable = await amazonPage.evaluate( () => {
+            node = document.querySelector('[data-action="show-all-offers-display"]');
+            if(node && node.textContent.trim() == 'Currently unavailable'){
+                return false;
+            }
+            return true;
+        });
 
         if(!isAvailable){
             throw new Error('Amazon product not available');
         }
-        const priceText = await amazonPage.$eval(
-            'span[class="a-price-whole"]',
-            // 'span.a-price.a-text-price.a-size-medium span.a-offscreen',
-            node => node.innerText
-        );
-        const price = parseFloat(priceText); // Assuming get_price is a separate function
+        const price = await amazonPage.evaluate( () =>{
+            priceDiv = document.querySelector('div[id="apex_desktop"]');
+            priceStr = priceDiv.querySelector('span[class="a-price-whole"]').textContent.replace('\n','')
+            + priceDiv.querySelector('span[class="a-price-fraction"]').textContent;
 
+            return parseFloat(priceStr);
+        });
+        console.log('hi');
 
         // await page.reload();
         //
@@ -143,7 +131,8 @@ async function amazonPrice(browser, imageUrl) //to get product price from amazon
 
         await amazonPage.close();
 
-        return {price};
+
+        return price;
     } catch (e) {
         console.error(e);
         await page.close();
@@ -152,52 +141,15 @@ async function amazonPrice(browser, imageUrl) //to get product price from amazon
 }
 
 
-async function scrapeProductPage(userInputUrl){
-    userInputUrl = userInputUrl.split('?')[0] + '?sk=consign';
+async function scrapeProductPage(browser, imageUrl, pageUrl){
+    let page = await browser.newPage();
 
-    const cookies = {
-        'cookie2': '104a0dc27df1d92c19f5f1997594ee15',
-        't': 'f78b2e125ed08fbdb38d66b550d1bc47',
-        '_tb_token_': '711bfee883513',
-        'cna': 'c6PMHaiUBwkCAW3GB0Vhn5tU',
-        'XSRF-TOKEN': '17129d05-0271-461b-a7f6-21eb773956ea',
-        'xlly_s': '1',
-        'cookie1': 'WqUNDVgfUjZEgjdAeHflnzulN5ssmCW9uDaXdmSeE3g%3D',
-        'cookie17': 'UUphzOvA3RGzsVEBbw%3D%3D',
-        'sgcookie': 'E100dhj76fufqF2ZlIc2UwEuJvVOpSVkJQJhhXVixuCgiNYeX1mSgi1wT%2Bvdy0GhDxf7OQkwKMbDtxhLeWaJXhJ%2F0giYZF1S0PBsKDx8IZceKKw%3D',
-        'sg': '106',
-        'csg': '04f86cef',
-        'lid': 'posh111',
-        'unb': '2206955801560',
-        'uc4': 'nk4=0%40EbL%2BqZphOMFCnqD2ZPvDBUN%2F&id4=0%40U2grF8CMYg6Hz3zPRpoXawSI8kphaiQZ',
-        '__cn_logon__': 'true',
-        '__cn_logon_id__': 'posh111',
-        'ali_apache_track': 'c_mid=b2b-22069558015606e1d8|c_lid=posh111|c_ms=1',
-        'ali_apache_tracktmp': 'c_w_signed=Y',
-        '_nk_': 'posh111',
-        'last_mid': 'b2b-22069558015606e1d8',
-        '_csrf_token': '1699628717658',
-        '__mwb_logon_id__': 'posh111',
-        '_m_h5_tk': '22f2ae0923f372ac9d0d6cb7ab435dab_1699655440808',
-        '_m_h5_tk_enc': '5f1c05292443e839dc9ca511eb8f2add',
-        'mwb': 'ng',
-        'aliwwLastRefresh': '1699073813666',
-        'is_identity': 'buyer',
-        '_is_show_loginId_change_block_': 'b2b-22069558015606e1d8_false',
-        '_show_force_unbind_div_': 'b2b-22069558015606e1d8_false',
-        '_show_sys_unbind_div_': 'b2b-22069558015606e1d8_false',
-        '_show_user_unbind_div_': 'b2b-22069558015606e1d8_false',
-        'tfstk': 'dpik21jGK4z7VSNo5QEW4Ld6FG8An_ZQGXIL9kFeuSPjv4FpPHv3iJbFTMkUtXcYG73pdLaEiR2LUJSUaSW4QRWzLvoLLDcb4yg897F3xvGMHCK9XYM7AlR96hISKYZQboHFyhHSFk6lTd32XM0X0YBy8hXjEioCGyNGdFNExOjQH5kzgXhK08fT_YPcYMP4EOlOuN5KsMw2pm7CRzybn5EFzM-h.',
-        'l': 'fBruao9nPYRt2PHkBOfaFurza77OSIRYSuPzaNbMi9fP9wsW5zw1W1FeGUvXC3MNFsMkR3RxBjFXBeYBqBAnnxv9SYRKwbHmnmOk-Wf..',
-        'isg': 'BFRUK_BwzUnlu1kOK6MQ-ub8JZLGrXiXBwnj9e414F9j2fQjFr1IJwpT2cnBJLDv',
-        '__rn_alert__': 'false',
-        'taklid': '54741a6156c34b2b994ef0d87f3b0427'
-    };
+    imageUrl = imageUrl.split('?')[0] + '?sk=consign';
 
-    const newArray = [];
+    const cookiesArray = [];
 
-    for (const [key, value] of Object.entries(cookies)) {
-        // Create a new object for each key-value pair
+    for (const [key, value] of Object.entries(cookies1668)) {
+
         const newObject = {
             name: key,
             value: value,
@@ -205,18 +157,13 @@ async function scrapeProductPage(userInputUrl){
             path: '/'
         };
 
-        // Add the new object to the array
-        newArray.push(newObject);
+
+        cookiesArray.push(newObject);
     }
 
-    // await page.goto(url, {
-    //     // waitUntil: 'load'
-    //     waitUntil: 'domcontentloaded'
-    // });
+    await page.setCookie(...cookiesArray);
 
-    await page.setCookie(...newArray);
-
-    await page.goto(userInputUrl, {
+    await page.goto(imageUrl, {
         // waitUntil: 'load'
         waitUntil: 'domcontentloaded'
     });
@@ -253,19 +200,19 @@ async function scrapeProductPage(userInputUrl){
     await new Promise((resolve)=> setTimeout(resolve, 10000));
 
     const data = await page.evaluate(() => {
-        const title = document.querySelector('div[class="title-text"]').textContent;
+        const title = document.querySelector('div[class="title-text"]')?.textContent;
 
         const priceContent = document.querySelector('.price-content');
-        const priceName = priceContent.querySelector('.price-name').textContent;
-        const originalPriceName = priceContent.querySelector('.original-price-name').textContent;
+        const priceName = priceContent?.querySelector('.price-name')?.textContent;
+        const originalPriceName = priceContent?.querySelector('.original-price-name')?.textContent;
 
-        const priceTextElements = priceContent.querySelectorAll('.price-text');
+        const priceTextElements = priceContent?.querySelectorAll('.price-text');
         const prices = Array.from(priceTextElements).map(element => element.textContent);
 
-        const originPriceNums = priceContent.querySelectorAll('.origin-price-wrapper .price-num');
+        const originPriceNums = priceContent?.querySelectorAll('.origin-price-wrapper .price-num');
         const originPrices = Array.from(originPriceNums).map(element => element.textContent.trim());
 
-        const unitText = priceContent.querySelector('.unit-text').textContent;
+        const unitText = priceContent?.querySelector('.unit-text').textContent;
 
         const propItems = Array.from(document.querySelectorAll('.prop-item'));
 
@@ -319,18 +266,16 @@ async function scrapeProductPage(userInputUrl){
     str = str + '\n' +data.originalPriceName;
     str = str + '\n' +data.unitText;
 
-    let res = await translateText(str);
-
-    const splitedArray = res.split('\n');
+    let translatedLines = await translateTextFromGoogle(browser, str);
 
     for(let i=0; i<data.skuData.length; i++){
-        data.skuData[i].skuItemName = splitedArray[i];
+        data.skuData[i].skuItemName = translatedLines[i];
     }
 
-    data.title = splitedArray[data.skuData.length];
-    data.priceName = splitedArray[data.skuData.length + 1];
-    data.originalPriceName = splitedArray[data.skuData.length + 2];
-    data.unitText = splitedArray[data.skuData.length + 3];
+    data.title = translatedLines[data.skuData.length];
+    data.priceName = translatedLines[data.skuData.length + 1];
+    data.originalPriceName = translatedLines[data.skuData.length + 2];
+    data.unitText = translatedLines[data.skuData.length + 3];
 
     // data["priceName"] = await translateText(data["priceName"]);
     // data["originalPriceName"] = await translateText(data["originalPriceName"]);
@@ -349,6 +294,37 @@ async function translateText(textToTranslate) {
         console.error('Translation error:', error);
     }
     return '';
+}
+
+async function translateTextFromGoogle(browser, textToTranslate) {
+    try {
+        const page = await browser.newPage();
+        textToTranslate = textToTranslate.replaceAll('\n', '%0A')
+        await page.goto('https://translate.google.co.uk/?sl=zh-CN&tl=en&op=translate&text='+textToTranslate);
+        try {
+            element = await page.evaluate( () => {
+                elements = document.querySelectorAll('span[class="VfPpkd-vQzf8d"]');
+                for(element of elements){
+                    if(element.textContent === "Reject all" ){
+                        window.scrollBy(0, window.innerHeight);
+                        element.click();
+                    }
+                }
+            });
+            await new Promise((resolve)=> setTimeout(resolve, 2000));
+        }catch (e){
+            console.error(e);
+        }
+        await page.waitForSelector('span[class="ryNqvb"]');
+        const translatedLines = await page.evaluate( () => {
+            lines = document.querySelectorAll('span[class="ryNqvb"]');
+            return Array.from(lines).map(e => e.textContent).filter(str=> str!="\n");
+        });
+        return translatedLines;
+    } catch (error) {
+        console.error('Translation error:', error);
+    }
+    return [];
 }
 
 module.exports = performScraping;
