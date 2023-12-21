@@ -115,22 +115,8 @@ async function amazonPrice(browser, imageUrl) //to get product price from amazon
 
             return parseFloat(priceStr);
         });
-        console.log('hi');
-
-        // await page.reload();
-        //
-        // await page.close();
-        //
-        // page = await browser.newPage();
-        // await page.setDefaultNavigationTimeout(120000);
-
-        // let userInputUrl = 'https://detail.1688.com/offer/738746323565.html?spm=a2615.2177701.autotrace-_t_16351492839694_1_0_0_1635150867529.49.d094303erUq9ul';
-        // let userInputUrl = 'https://detail.1688.com/offer/692384204490.html?spm=a261y.7663282.10811813088311.2.2c492e51HBl3Mc&sk=consign';
-        // await scrapeProductPage(userInputUrl);
-
 
         await amazonPage.close();
-
 
         return price;
     } catch (e) {
@@ -139,7 +125,6 @@ async function amazonPrice(browser, imageUrl) //to get product price from amazon
         throw e;
     }
 }
-
 
 async function scrapeProductPage(browser, imageUrl, pageUrl){
     let page = await browser.newPage();

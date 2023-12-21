@@ -10,6 +10,8 @@
   "author": "Ashhad Rasool",
   "license": "ISC",
   "dependencies": {
+    "csv-parser": "^3.0.0",
+    "csv-writer": "^1.6.0",
     "free-translate": "^0.6.1",
     "piscina": "^4.2.1",
     "puppeteer": "^21.6.0"

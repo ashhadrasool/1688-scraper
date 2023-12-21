@@ -2,6 +2,11 @@ const puppeteer = require('puppeteer');
 const { Piscina } = require('piscina');
 const path = require('path');
 const cookies1668 = require('./1668-cookies.json');
+const csv = require('csv-parser');
+const fs = require('fs');
+const createCsvWriter = require('csv-writer').createObjectCsvWriter;
+
+const csvFilePath = './output.csv'
 
 async function launchAndSetCookies() {
     let data;
@@ -88,15 +93,87 @@ async function launchAndSetCookies() {
             filename: path.resolve(__dirname, 'detail-page-scrapper.js')
         }
 
+        let headers = [];
+        // let csvHeaders = [];
+        if(fs.existsSync(csvFilePath)){
+            const readStream = fs.createReadStream(csvFilePath);
+            readStream
+                .pipe(csv())
+                .on('headers', (h) => {
+                    headers = h;
+                })
+        }
+
         let promises = []
         for(let i=0; i<imageUrls.length; i++){
             if(!imageUrls[i]){
                 continue;
             }
             promises.push(
-                (piscina.run({url: productUrls[i], imageUrl: imageUrls[i], exchangeRate}, options).then( async (res) => {
-                    console.log('res', res);
-                }))
+                piscina.run({url: productUrls[i], imageUrl: imageUrls[i], exchangeRate}, options)
+                    .then( (res) => {
+                        console.log('res', JSON.stringify(res));
+                        return res.productDetails;
+                    })
+                    .then( async (res)=> {
+                        const objectKeys = Object.keys(res);
+
+                        let newHeaders = false;
+                        objectKeys.forEach(k => {
+                            if(!headers.includes(k)){
+                                headers.push(k);
+                                newHeaders = true;
+                            }
+                        })
+
+                        const csvHeaders = headers.map( key => {
+                            return {
+                                id: key,
+                                title: key
+                            }
+                        });
+
+                        let csvWriter = undefined;
+                        if(!fs.existsSync(csvFilePath) || newHeaders){
+                            const oldData = [];
+                            csvWriter = createCsvWriter({
+                                path: csvFilePath,
+                                header: csvHeaders,
+                            });
+                            if(fs.existsSync(csvFilePath)){
+                                const readStream = fs.createReadStream(csvFilePath);
+                                readStream
+                                    .pipe(csv())
+                                    .on('data',  (row) => {
+                                        oldData.push(row);
+                                    });
+
+                                oldData.forEach( (row) => {
+                                    csvWriter.writeRecords(row);
+                                });
+                            }
+                        }else{
+                            csvWriter = createCsvWriter({
+                                path: csvFilePath,
+                                header: csvHeaders,
+                                append: true,
+                            });
+                        }
+
+                        data = [res];
+
+                        await csvWriter.writeRecords(data)
+                            .then(() => {
+                                console.log('CSV file has been written');
+                            })
+                            .catch((error) => {
+                                console.error(error);
+                            });
+                        // sqLiteDatabase.updateTable('scraper_jobs',{done: 1}, {url});
+                        console.log(`Scrapped job ${i+1}: ${url}`);
+                    }
+                ).catch(e => console.log('error in scrapping:', url, e))
+
             );
         }
         const results = await Promise.all(promises);
