@@ -1,9 +1,10 @@
-const {translate} = require("free-translate");
 const cookies1668 = require('./1668-cookies.json');
 
 const puppeteer = require("puppeteer");
 
 async function performScraping({url, imageUrl, exchangeRate}){
+    if(1==1)
+        return {};
     const browser = await puppeteer.launch(
         {
             headless: false,
@@ -18,7 +19,7 @@ async function performScraping({url, imageUrl, exchangeRate}){
         amazonPr = await amazonPrice(browser, imageUrl);
         amazonPr = (amazonPr * exchangeRate).toFixed(2);
         const productDetails = await scrapeProductPage(browser, url);
-        return {productDetails};
+        return productDetails;
     }catch (e) {
         console.log(e);
     }
@@ -38,12 +39,12 @@ async function amazonPrice(browser, imageUrl) //to get product price from amazon
             await page.click('button[id="W0wltc"]') //comment out
         }catch (e){
         }
-        await page.click('.Gdd5U'); // Assuming this is the class for the Google Lens icon
-        await page.waitForTimeout(3000); // Using waitForTimeout instead of sleep
-        await page.click('input[class="cB9M7"]'); // Assuming this is the class for the Google Lens search input
-        await page.type('input[class="cB9M7"]', imageUrl); // Typing the image URL
-        await page.click('.Qwbd3'); // Assuming this is the class for the "Search" button
-        await page.waitForTimeout(4000); // Using waitForTimeout instead of sleep
+        await page.click('.Gdd5U');
+        await page.waitForTimeout(3000);
+        await page.click('input[class="cB9M7"]');
+        await page.type('input[class="cB9M7"]', imageUrl);
+        await page.click('.Qwbd3');
+        await page.waitForTimeout(4000);
 
         try {
             element = await page.evaluate( () => {
@@ -65,7 +66,6 @@ async function amazonPrice(browser, imageUrl) //to get product price from amazon
         let amazonPage;
         for (const item of allItems) {
             try {
-                // const link = await page.$('.ksQYvb');
                 const url = await item.$eval('a[href]', node => node.getAttribute('href'));
                 const text = await item.$eval('.fjbPGe', node => node.innerText);
                 if (text === 'Amazon UK' && !url.includes('/stores/')) {
@@ -126,10 +126,10 @@ async function amazonPrice(browser, imageUrl) //to get product price from amazon
     }
 }
 
-async function scrapeProductPage(browser, imageUrl, pageUrl){
+async function scrapeProductPage(browser, pageUrl){
     let page = await browser.newPage();
 
-    imageUrl = imageUrl.split('?')[0] + '?sk=consign';
+    pageUrl = pageUrl.split('?')[0] + '?sk=consign';
 
     const cookiesArray = [];
 
@@ -148,7 +148,7 @@ async function scrapeProductPage(browser, imageUrl, pageUrl){
 
     await page.setCookie(...cookiesArray);
 
-    await page.goto(imageUrl, {
+    await page.goto(pageUrl, {
         // waitUntil: 'load'
         waitUntil: 'domcontentloaded'
     });
@@ -257,28 +257,14 @@ async function scrapeProductPage(browser, imageUrl, pageUrl){
         data.skuData[i].skuItemName = translatedLines[i];
     }
 
+    data.url = pageUrl;
     data.title = translatedLines[data.skuData.length];
     data.priceName = translatedLines[data.skuData.length + 1];
     data.originalPriceName = translatedLines[data.skuData.length + 2];
     data.unitText = translatedLines[data.skuData.length + 3];
 
-    // data["priceName"] = await translateText(data["priceName"]);
-    // data["originalPriceName"] = await translateText(data["originalPriceName"]);
-
     return data;
 
-}
-
-async function translateText(textToTranslate) {
-    try {
-        return await translate(textToTranslate, {
-            // from: 'zh-cn',
-            to: 'en'
-        });
-    } catch (error) {
-        console.error('Translation error:', error);
-    }
-    return '';
 }
 
 async function translateTextFromGoogle(browser, textToTranslate) {

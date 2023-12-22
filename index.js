@@ -113,10 +113,19 @@ async function launchAndSetCookies() {
                 piscina.run({url: productUrls[i], imageUrl: imageUrls[i], exchangeRate}, options)
                     .then( (res) => {
                         console.log('res', JSON.stringify(res));
-                        return res.productDetails;
+                        return res;
                     })
                     .then( async (res)=> {
-                        const objectKeys = Object.keys(res);
+                        res = {"title":"Pintime/During the product, quartz watch men's watch foreign trade cross -border explosion wine barrel square watch multifunctional Miller watch men","priceName":"price","prices":["78.00"],"originPrices":[],"unitText":"1 starting","items":[],"skuData":[{"skuItemName":"Red belt silver shell","discountPrice":"78.00元","skuItemSaleNum":"7151 个可售"},{"skuItemName":"Red belt rose shell","discountPrice":"78.00元","skuItemSaleNum":"8126个可售"},{"skuItemName":"Black belt silver shell","discountPrice":"78.00元","skuIte mSaleNum":"6985个可售"},{"skuItemName":"Black belt rose shell","discountPrice":"78.00元","skuItemSaleNum":"7526个可售"},{"skuItemName":"Black shell","discountPrice":"78.00元","s kuItemSaleNum":"8583个可售"},{"skuItemName":"Red belt black shell","discountPrice":"78.00元","skuItemSaleNum":"8637个可售"}],"url":"https://detail.1688.com/offer/623927408071.html?sk=consign","originalPriceName":"undefined"};
+
+
+                        // const objectKeys = Object.keys(res);
+                        const objectKeys = [
+                            "title",
+                            "skuTitle",
+                            "price",
+                            "discountedPrice"
+                        ]
 
                         let newHeaders = false;
                         objectKeys.forEach(k => {
